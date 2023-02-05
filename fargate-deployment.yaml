@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: 2010-09-09
+Outputs:
+  GhostFargateServiceName:
+    Description: Ghost Fargate Service Name
+    Value: !GetAtt 
+      - GhostService
+      - Name
+  TaskCPU:
+    Description: Fargate task CPU
+    Value: !FindInMap [TaskSize, !Ref FargateTaskSize, cpu]
+  TaskMemory:
+    Description: Fargate task Memory
+    Value: !FindInMap [TaskSize, !Ref FargateTaskSize, memory]
+Mappings:
+  TaskSize:
+    small:
+      cpu: '512'
+      memory: '1GB'
+    medium:
+      cpu: '1 vCPU'
+      memory: '2048'
+    large:
+      cpu: '2 vCPU'
+      memory: '4096'
+Parameters:
+  Cluster:
+    Description: The ECS Cluster to deploy to.
+    Type: String
+  DependencyStackName:
+    Description: The name of the Dependency Stack to retrieve CloudFormation Exports
+    Type: String
+  GhostImage:
+    Description: The Ghost container image to deploy.
+    Type: String
+  MysqlSecret:
+    Description: RDS secret ARN
+    Type: String
+  FargateTaskSize:
+    Description: Fargage task CPU and RAM allocation
+    Type: String
+    Default: small
+    AllowedValues:
+      - "small"
+      - "medium"
+      - "large" 
+Resources:
+  GhostService:
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: ghost
+          ContainerPort: 2368
+          TargetGroupArn: !ImportValue 
+            'Fn::Sub': '${DependencyStackName}-GhostTG'
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups:
+            - !ImportValue 
+              'Fn::Sub': '${DependencyStackName}-GhostSG'
+          Subnets:
+            - !ImportValue 
+              'Fn::Sub': '${DependencyStackName}-Subnet1'
+            - !ImportValue 
+              'Fn::Sub': '${DependencyStackName}-Subnet2'
+      TaskDefinition: !Ref GhostTaskDefinition
+    Type: 'AWS::ECS::Service'
+  GhostTaskDefinition:
+    Properties:
+      ContainerDefinitions:
+        - Environment:
+            - Name: url
+              Value: !ImportValue 
+                'Fn::Sub': '${DependencyStackName}-GHOSTURL'
+            - Name: database__client
+              Value: mysql
+            - Name: database__connection__host
+              Value: !ImportValue 
+                'Fn::Sub': '${DependencyStackName}-GhostDBHost'
+            - Name: database__connection__database
+              Value: ghost
+          Essential: 'true'
+          Image: !Ref GhostImage
+          secrets:
+            - name: database__connection__user
+              valueFrom: !Join 
+                - ''
+                - - !ImportValue 
+                    'Fn::Sub': '${DependencyStackName}-DBSECRET'
+                    -               
+            - name: database__connection__password
+              valueFrom: !Join 
+                - ''
+                - - !ImportValue 
+                    'Fn::Sub': '${DependencyStackName}-DBSECRET'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue 
+                'Fn::Sub': '${DependencyStackName}-GhostLogGroupName'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: !ImportValue 
+                'Fn::Sub': '${DependencyStackName}-ENVPREFIX'
+          Name: ghost
+          PortMappings:
+            - ContainerPort: 2368 
+      Cpu: !FindInMap [TaskSize, !Ref FargateTaskSize, cpu]
+      ExecutionRoleArn: !ImportValue 
+        'Fn::Sub': '${DependencyStackName}-TaskExecutionRoleArn'
+      Memory: !FindInMap [TaskSize, !Ref FargateTaskSize, memory]
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn: !ImportValue 
+        'Fn::Sub': '${DependencyStackName}-TaskRoleArn'
+    Type: 'AWS::ECS::TaskDefinition'
