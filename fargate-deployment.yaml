@@ -87,13 +87,12 @@ Resources:
               valueFrom: !Join 
                 - ''
                 - - !ImportValue 
-                    'Fn::Sub': '${DependencyStackName}-DBSECRET'
-                    -               
+                    'Fn::Sub': '${DependencyStackName}-DBSECRETPARAMUSER'              
             - name: database__connection__password
               valueFrom: !Join 
                 - ''
                 - - !ImportValue 
-                    'Fn::Sub': '${DependencyStackName}-DBSECRET'
+                    'Fn::Sub': '${DependencyStackName}-DBSECRETPARAMPASS'
           LogConfiguration:
             LogDriver: awslogs
             Options:
