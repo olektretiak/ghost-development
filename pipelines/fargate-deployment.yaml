@@ -26,7 +26,7 @@ Parameters:
   Cluster:
     Description: The ECS Cluster to deploy to.
     Type: String
-  DependencyStackName:
+  InfraStackName:
     Description: The name of the Dependency Stack to retrieve CloudFormation Exports
     Type: String
   GhostImage:
@@ -53,17 +53,17 @@ Resources:
         - ContainerName: ghost
           ContainerPort: 2368
           TargetGroupArn: !ImportValue 
-            'Fn::Sub': '${DependencyStackName}-GhostTG'
+            'Fn::Sub': '${InfraStackName}-GhostTG'
       NetworkConfiguration:
         AwsvpcConfiguration:
           SecurityGroups:
             - !ImportValue 
-              'Fn::Sub': '${DependencyStackName}-GhostSG'
+              'Fn::Sub': '${InfraStackName}-GhostSG'
           Subnets:
             - !ImportValue 
-              'Fn::Sub': '${DependencyStackName}-Subnet1'
+              'Fn::Sub': '${InfraStackName}-Subnet1'
             - !ImportValue 
-              'Fn::Sub': '${DependencyStackName}-Subnet2'
+              'Fn::Sub': '${InfraStackName}-Subnet2'
       TaskDefinition: !Ref GhostTaskDefinition
     Type: 'AWS::ECS::Service'
   GhostTaskDefinition:
@@ -72,12 +72,12 @@ Resources:
         - Environment:
             - Name: url
               Value: !ImportValue 
-                'Fn::Sub': '${DependencyStackName}-GHOSTURL'
+                'Fn::Sub': '${InfraStackName}-GHOSTURL'
             - Name: database__client
               Value: mysql
             - Name: database__connection__host
               Value: !ImportValue 
-                'Fn::Sub': '${DependencyStackName}-GhostDBHost'
+                'Fn::Sub': '${InfraStackName}-GhostDBHost'
             - Name: database__connection__database
               Value: ghost
           Essential: 'true'
@@ -87,30 +87,30 @@ Resources:
               valueFrom: !Join 
                 - ''
                 - - !ImportValue 
-                    'Fn::Sub': '${DependencyStackName}-DBSECRETPARAMUSER'              
+                    'Fn::Sub': '${InfraStackName}-DBSECRETPARAMUSER'              
             - name: database__connection__password
               valueFrom: !Join 
                 - ''
                 - - !ImportValue 
-                    'Fn::Sub': '${DependencyStackName}-DBSECRETPARAMPASS'
+                    'Fn::Sub': '${InfraStackName}-DBSECRETPARAMPASS'
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !ImportValue 
-                'Fn::Sub': '${DependencyStackName}-GhostLogGroupName'
+                'Fn::Sub': '${InfraStackName}-GhostLogGroupName'
               awslogs-region: !Ref 'AWS::Region'
               awslogs-stream-prefix: !ImportValue 
-                'Fn::Sub': '${DependencyStackName}-ENVPREFIX'
+                'Fn::Sub': '${InfraStackName}-ENVPREFIX'
           Name: ghost
           PortMappings:
             - ContainerPort: 2368 
       Cpu: !FindInMap [TaskSize, !Ref FargateTaskSize, cpu]
       ExecutionRoleArn: !ImportValue 
-        'Fn::Sub': '${DependencyStackName}-TaskExecutionRoleArn'
+        'Fn::Sub': '${InfraStackName}-TaskExecutionRoleArn'
       Memory: !FindInMap [TaskSize, !Ref FargateTaskSize, memory]
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
       TaskRoleArn: !ImportValue 
-        'Fn::Sub': '${DependencyStackName}-TaskRoleArn'
+        'Fn::Sub': '${InfraStackName}-TaskRoleArn'
     Type: 'AWS::ECS::TaskDefinition'
