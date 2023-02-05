@@ -1,0 +1,27 @@
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+      - CODEBUILD_RESOLVED_SOURCE_VERSION="${CODEBUILD_RESOLVED_SOURCE_VERSION:-$IMAGE_TAG}"
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG"
+      - DOCKER_LOGIN=`aws ecr get-login --region $AWS_DEFAULT_REGION`
+      - PASSWORD=`echo $DOCKER_LOGIN | cut -d' ' -f6`
+      - mkdir outputs
+  build:
+    commands:
+      - echo Building the Docker $IMAGE_URI
+      - docker build -t $IMAGE_URI .
+  post_build:
+    commands:
+      - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
+      - docker push $IMAGE_URI
+      - printf '{"name":"ghost","imageUri":"%s"}' "$IMAGE_URI" > ../outputs/images.json
+      - cp /pipelines/fargate-deployment.yaml ../outputs
+artifacts:
+  files:
+  - outputs/*
+  discard-paths: yes
