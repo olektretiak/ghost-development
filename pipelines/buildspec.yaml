@@ -19,7 +19,7 @@ phases:
     commands:
       - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
       - docker push $IMAGE_URI
-      - printf '{"name":"ghost","imageUri":"%s"}' "$IMAGE_URI" > ../outputs/images.json
+      - printf '{"name":"ghost","imageUri":"%s"}' "$IMAGE_URI" > ./outputs/images.json
       - cp /pipelines/fargate-deployment.yaml ./outputs/
 artifacts:
   files:
