@@ -32,9 +32,6 @@ Parameters:
   GhostImage:
     Description: The Ghost container image to deploy.
     Type: String
-  MysqlSecret:
-    Description: RDS secret ARN
-    Type: String
   FargateTaskSize:
     Description: Fargage task CPU and RAM allocation
     Type: String
